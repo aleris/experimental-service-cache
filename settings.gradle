@@ -1,0 +1,3 @@
+rootProject.name = 'experimental-service-cache'
+include 'service-cache-lib'
+include 'test-service'

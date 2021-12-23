@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id "com.github.spotbugs" version "5.0.3"
+}
+
+group 'ro.adriantosca'
+version '1.0-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    jmh
+}
+configurations.jmhImplementation.extendsFrom(configurations.implementation)
+
+dependencies {
+    implementation 'com.google.guava:guava:31.0.1-jre'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testImplementation "org.mockito:mockito-core:4.2.0"
+    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+
+    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.33'
+    jmhImplementation sourceSets.main.output
+    jmhImplementation 'org.openjdk.jmh:jmh-core:1.33'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task jmh(type: JavaExec) {
+    description = "Executes JMH performance tests for ${project.name}."
+    main = 'org.openjdk.jmh.Main'
+
+    // Setting the classpath like this implicitly creates task dependencies on the 'classes' and 'jmhClasses' tasks.
+    classpath = sourceSets.jmh.runtimeClasspath
+
+    // The results of the full run are stored in build/reports/jmh/result.json
+    def resultFile = new File((File) project.reportsDir, 'jmh/result.json')
+
+    // Run gradlew jmhHelp to see all the options that can be set here
+    args '.*Benchmark'
+    args '-rf', 'json'
+    args '-rff', resultFile
+    args '-prof', 'jfr'
+
+    doFirst {
+        // make sure build/reports/jmh directory exists
+        resultFile.parentFile.mkdirs()
+    }
+}
+
+task jmhHelp(type: JavaExec) {
+    description = 'Prints the available command line options for JMH.'
+    main = 'org.openjdk.jmh.Main'
+    group = 'help'
+    classpath = sourceSets.jmh.runtimeClasspath
+    args '-lprof'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+    if (it.name != 'compileJmhJava') {
+        // JMH uses annotation processing to make your @Benchmark annotated methods into full-fledged performance tests.
+        // So, we disable annotation processing only for non-JMH compile tasks.
+        options.compilerArgs << '-proc:none'
+    }
+}
+
+idea.module {
+    downloadSources = true
+    downloadJavadoc = true
+    excludeDirs += file('.idea')
+}
+
+//idea.project {
+//    jdkName = JavaVersion.VERSION_17
+//    languageLevel = JavaVersion.VERSION_17
+//}
